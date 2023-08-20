@@ -20,7 +20,7 @@ import json
 
 
 PROMPT = "Return the solution using the following class definition:\n"
-openai.api_key = "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"
+openai.api_key = "add your key here"
 MODEL = "gpt-3.5-turbo"
 QUESTION_PATH = "/root/.leetcode/code/"
 LC_PATH = "./data/lc/"
