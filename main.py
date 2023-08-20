@@ -20,7 +20,7 @@ import json
 
 
 PROMPT = "Return the solution using the following class definition:\n"
-openai.api_key = "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"
+openai.api_key = "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"
 MODEL = "gpt-3.5-turbo"
 QUESTION_PATH = "/root/.leetcode/code/"
 LC_PATH = "./data/lc/"
@@ -48,6 +48,7 @@ def generate_lc_question(question):
     stdout, stderr = process.communicate()
     cmd = ["leetcode", "e" ,  question]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _ , _ = process.communicate()
     return stdout.decode() 
 
 def find_file_by_number(directory, number):
