@@ -18,17 +18,17 @@ import openai
 import json
 
 
-
+PREFIX = "### Instruction: You are a helpful AI Assistant. Please provide python code based on the user's instructions, please only return python code and the code ### Input: "
 PROMPT = "Return the solution using the following class definition:\n"
-openai.api_key = "add your key here"
-MODEL = "gpt-3.5-turbo"
+openai.api_key = "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"
+MODEL = "text-davinci-003"
 QUESTION_PATH = "/root/.leetcode/code/"
 LC_PATH = "./data/lc/"
 GPT_PATH = "./data/gpt/"
 PROMPT_PATH = "./data/prompt/"
 OJ_PATH = "./data/oj/"
+MAX_TOKENS = 2000
 
-PROMPT_test = 'Two Sum \nGiven an array of integers nums\xa0and an integer target, return indices of the two numbers such that they add up to target.\n\nYou may assume that each input would have exactly one solution, and you may not use the same element twice.\n\nYou can return the answer in any order.\n\n\xa0\nExample 1:\n\nInput: nums = [2,7,11,15], target = 9\nOutput: [0,1]\nExplanation: Because nums[0] + nums[1] == 9, we return [0, 1].\n\n\nExample 2:\n\nInput: nums = [3,2,4], target = 6\nOutput: [1,2]\n\n\nExample 3:\n\nInput: nums = [3,3], target = 6\nOutput: [0,1]\n\n\n\xa0\nConstraints:\n\n\n\t2 <= nums.length <= 10⁴\n\t-10⁹ <= nums[i] <= 10⁹\n\t-10⁹ <= target <= 10⁹\n\tOnly one valid answer exists.\n\n\n\xa0\nFollow-up:\xa0Can you come up with an algorithm that is less than O(n²)\xa0time complexity?\nReturn the solution using the following class definition:\nclass Solution:\n    def twoSum(self, nums: List[int], target: int) -> List[int]:\n        \n'
 def read_file(file_name):
     with open(file_name, 'r') as file:
         content = file.read()
@@ -59,32 +59,35 @@ def find_file_by_number(directory, number):
 def generate_prompt(description, class_def):
     description = description[5:]
     description = description.replace('is on the run...\n\n', '')
-    return description + PROMPT +  class_def
+    return PREFIX + description + PROMPT +  class_def + "### Response:"
     
 def send_to_openai(prompt):
-    response = openai.ChatCompletion.create(
+    response = openai.Completion.create(
       model= MODEL,
-      messages=[
-        {
-          "role": "user",
-          "content": prompt,
-        }
-      ],
+      prompt= prompt,
       temperature=1,
-      max_tokens=1000,
+      max_tokens=MAX_TOKENS,
       top_p=1,
       frequency_penalty=0,
       presence_penalty=0
     )
     return response 
 
-def parse_response(response):
+def parse_response_gpt3_5(response):
     code_content = response["choices"][0]["message"]["content"]
     # Splitting the content to extract the code section
     code_start = code_content.index("```") + 10 
     code_end = code_content.rindex("```")
     code = code_content[code_start:code_end].strip()
     return code
+
+def parse_response_davinci(response):
+    code_content = response["choices"][0]["text"]
+    if code_content.startswith("\""):
+        code_content = code_content[2:]
+    code_content.strip()
+    # Splitting the content to extract the code section
+    return code_content
 
 def submit_to_lc(question):
     cmd = ["leetcode", "x" ,  question]
@@ -103,12 +106,15 @@ if __name__ == "__main__":
         question_file =  find_file_by_number(QUESTION_PATH, question)
         class_def = read_file(question_file)
         prompt = generate_prompt(description, class_def).__repr__()
+        # prompt = "1+1="
+        # print(prompt)
         write_file(PROMPT_PATH + question + ".prompt", prompt)
         response = send_to_openai(prompt)
         write_json(GPT_PATH + question + ".json", response)
-        code = parse_response(response.to_dict())
+        code = parse_response_davinci(response.to_dict())
         write_file(question_file, code)
         oj_response = submit_to_lc(question)
+        print(oj_response)
         write_file(OJ_PATH + question + ".txt", oj_response)
 
     
