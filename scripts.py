@@ -14,42 +14,23 @@ Return: LC OJ response
 import os
 import sys
 import subprocess
-import openai
-import json
+from config import *
+from utils import *
 
-
-PREFIX = "### Instruction: You are a helpful AI Assistant. Please provide python code based on the user's instructions, please only return python code and the code ### Input: "
-PROMPT = "Return the solution using the following class definition:\n"
-openai.api_key = "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"
-MODEL = "text-davinci-003"
-QUESTION_PATH = "/root/.leetcode/code/"
-LC_PATH = "./data/lc/"
-GPT_PATH = "./data/gpt/"
-PROMPT_PATH = "./data/prompt/"
-OJ_PATH = "./data/oj/"
-MAX_TOKENS = 2000
-
-def read_file(file_name):
-    with open(file_name, 'r') as file:
-        content = file.read()
-    return content
-
-def write_file(file_name, content):
-    with open(file_name, 'w') as file:
-        file.write(content)
-
-def write_json(file_name, data):
-    with open(file_name, "w") as outfile:
-        json.dump(data, outfile)
 
 def generate_lc_question(question):
     cmd = ["leetcode", "p" ,  question]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
+    # rm the cache file first
+    cmd = ["rm", f"/root/.leetcode/code/{question}.*"]
+    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    _, _ = process.communicate()
     cmd = ["leetcode", "e" ,  question]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _ , _ = process.communicate()
-    return stdout.decode() 
+    _, _ = process.communicate()
+    description = stdout.decode()[5:].replace('is on the run...\n\n', '')
+    return description
 
 def find_file_by_number(directory, number):
     files = os.listdir(directory)
@@ -57,9 +38,9 @@ def find_file_by_number(directory, number):
     return os.path.abspath(os.path.join(directory, matching_files[0])) if matching_files else None
 
 def generate_prompt(description, class_def):
-    description = description[5:]
-    description = description.replace('is on the run...\n\n', '')
-    return PREFIX + description + PROMPT +  class_def + "### Response:"
+    # description = description[5:]
+    # description = description.replace('is on the run...\n\n', '')
+    return PREFIX + description + PROMPT +  class_def + RESPONSE 
     
 def send_to_openai(prompt):
     response = openai.Completion.create(
@@ -98,6 +79,7 @@ def submit_to_lc(question):
 if __name__ == "__main__":
     start = int(sys.argv[1])
     end = int(sys.argv[2])
+    shot = int(sys.argv[3])
     for question in range(start, end):
         question = str(question)
         print("Processing question: " + question)
@@ -106,8 +88,6 @@ if __name__ == "__main__":
         question_file =  find_file_by_number(QUESTION_PATH, question)
         class_def = read_file(question_file)
         prompt = generate_prompt(description, class_def).__repr__()
-        # prompt = "1+1="
-        # print(prompt)
         write_file(PROMPT_PATH + question + ".prompt", prompt)
         response = send_to_openai(prompt)
         write_json(GPT_PATH + question + ".json", response)
