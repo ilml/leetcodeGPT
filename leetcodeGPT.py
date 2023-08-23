@@ -4,13 +4,15 @@ Solve process:
 generate promt -> model response -> parse code -> OJ -> debug info -> generate prompt ... until AC
 
 Memory dict: 
-step: (prompt, model_response, code, oj_response)
+step: (prompt, debug_prompt, model_response, code, oj_response)
 
 @tom 2023-08-21
 """
 
 from scripts import *
-from collections import deque
+from collections import defaultdict
+
+MEMORY_SEGMENT = ["prompt", "debug_prompt", "model_response", "code", "oj_response"]
 
 class leetcodeGPT:
     def __init__(self,
@@ -24,47 +26,57 @@ class leetcodeGPT:
         self.n_history = n_history
         self.model = model
         self.step = 0
-        self.memory = dict() # memory of everything
+        self.memory = defaultdict(dict) # memory of everything
         self.description = generate_lc_question(question) # description of the question
         self.solution_file = find_file_by_number(QUESTION_PATH, question) # solution file
         self.class_def = read_file(self.solution_file)   # class definition of the question
+        self.solve_prompt = generate_solve_prompt(self.description, self.class_def)
     
     def _add_step(self):
         """ Must/Only call this function to modify step
         """
         self.step += 1
-    
+
+    def _add_memory(self, mem_seg, mem_value):
+        """ Must/Only call this function to modify memory
+        """
+        assert mem_seg in MEMORY_SEGMENT
+        self.memory[self.step][mem_seg] = mem_value
 
     def generate_prompt(self):
         """ Generate prompt for one round with historical debug information
         """
         if self.step == 0: # first round, we only need description and class definition
-            prompt = PREFIX + self.description + PROMPT +  self.class_def + RESPONSE 
+            prompt = PREFIX + self.solve_prompt + RESPONSE 
         else: # We form the prompt from historical prompts and current debug information
+            debug_prompt = ""
             for i in range(self.step - self.n_history, self.step):
-                prompt += self.memory[i]["prompt"] + "\n" + self.memory[i]["model_response"] + "\n" + self.memory[i]["code"] + "\n" + self.memory[i]["oj_response"] + "\n"
+                debug_prompt += self.memory[i]["debug_prompt"]
+            prompt = PREFIX + self.solve_prompt + debug_prompt + RESPONSE 
         return prompt
-
-
-    def submit(self, answer):
-    
-    def process_oj_response(self, oj_response):
-
-    def solve(self, question):
-        question = str(question)
-        print("Solving question: " + question)
-        description = generate_lc_question(question)
-        write_file(LC_PATH + question + ".txt", description)
-        question_file =  find_file_by_number(QUESTION_PATH, question)
-        class_def = read_file(question_file)
-        prompt = generate_prompt(description, class_def).__repr__()
-        write_file(PROMPT_PATH + question + ".prompt", prompt)
-        response = send_to_openai(prompt)
-        write_json(GPT_PATH + question + ".json", response)
-        code = parse_response_davinci(response.to_dict())
-        write_file(question_file, code)
-        oj_response = submit_to_lc(question)
-        print(oj_response)
-        write_file(OJ_PATH + question + ".txt", oj_response)
-
-    
+        
+        
+    def solve(self):
+        """ Solve the question
+        """
+        for _ in range(self.n_debug + 1):
+            print("Solving question: " + self.question + " at step " + str(self.step))
+            prompt = self.generate_prompt()
+            self._add_memory("prompt", prompt)
+            response = send_to_openai(prompt)
+            self._add_memory("model_response", response)
+            code = parse_response_davinci(response.to_dict())
+            self._add_memory("code", code)
+            write_file(self.solution_file, code)
+            oj_response = submit_to_lc(self.question)
+            self._add_memory("oj_response", oj_response)
+            if "Success" in oj_response: 
+                write_json(MEM_PATH + self.question + ".json", self.memory)
+                print("question " + self.question + " solved at step " + str(self.step))
+                return
+            else:
+                debug_prompt = generate_debug_prompt(code, oj_response)
+                self._add_memory("debug_prompt", debug_prompt)
+            self._add_step()
+        write_json(MEM_PATH + self.question + ".json", self.memory)
+        print("question " + self.question + " can't be solved within " + str(self.n_debug+1) + " steps")

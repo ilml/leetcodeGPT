@@ -23,13 +23,16 @@ def generate_lc_question(question):
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     # rm the cache file first
-    cmd = ["rm", f"/root/.leetcode/code/{question}.*"]
-    process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, _ = process.communicate()
+    cmd = f"rm /root/.leetcode/code/{question}.*"
+    try:
+        process = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE)
+        _, _ = process.communicate()
+    except FileNotFoundError:
+        pass  # Do nothing, suppress the error
     cmd = ["leetcode", "e" ,  question]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, _ = process.communicate()
-    description = stdout.decode()[5:].replace('is on the run...\n\n', '')
+    description = stdout.decode().replace('is on the run...\n\n', '')
     return description
 
 def find_file_by_number(directory, number):
@@ -38,8 +41,6 @@ def find_file_by_number(directory, number):
     return os.path.abspath(os.path.join(directory, matching_files[0])) if matching_files else None
 
 def generate_prompt(description, class_def):
-    # description = description[5:]
-    # description = description.replace('is on the run...\n\n', '')
     return PREFIX + description + PROMPT +  class_def + RESPONSE 
     
 def send_to_openai(prompt):
@@ -74,7 +75,14 @@ def submit_to_lc(question):
     cmd = ["leetcode", "x" ,  question]
     process = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    return stdout.decode() 
+    stdout = stdout.decode().replace("Stdout:", '').strip()
+    return stdout 
+
+def generate_debug_prompt(solution, oj_response):
+    return f"\n This is your previous solution: {solution} \n This solution is not correct, here is the debug information:\n{oj_response}\n  please debug your code and retun a correct answer."
+
+def generate_solve_prompt(description, class_def):
+    return description + PROMPT +  class_def
 
 if __name__ == "__main__":
     start = int(sys.argv[1])
