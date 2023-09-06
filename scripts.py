@@ -84,6 +84,9 @@ def generate_debug_prompt(solution, oj_response):
 def generate_solve_prompt(description, class_def):
     return description + PROMPT +  class_def
 
+def generate_executable(code, unit_test):
+    return code + "\n" + unit_test
+
 if __name__ == "__main__":
     start = int(sys.argv[1])
     end = int(sys.argv[2])

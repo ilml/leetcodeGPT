@@ -1,18 +1,19 @@
 """
 class for solve one leetcode question
 Solve process:
-generate promt -> model response -> parse code -> OJ -> debug info -> generate prompt ... until AC
+generate promt -> model response -> parse code -> OJ/local unit tests -> debug info -> generate prompt ... until AC
 
 Memory dict: 
-step: (prompt, debug_prompt, model_response, code, oj_response)
+step: (prompt, debug_prompt, model_response, code, execute_result)
 
 @tom 2023-08-21
 """
 
 from scripts import *
 from collections import defaultdict
+from execute import check_correctness
 
-MEMORY_SEGMENT = ["prompt", "debug_prompt", "model_response", "code", "oj_response"]
+MEMORY_SEGMENT = ["prompt", "debug_prompt", "model_response", "code", "execute_result"]
 
 class leetcodeGPT:
     def __init__(self,
@@ -31,6 +32,7 @@ class leetcodeGPT:
         self.solution_file = find_file_by_number(QUESTION_PATH, question) # solution file
         self.class_def = read_file(self.solution_file)   # class definition of the question
         self.solve_prompt = generate_solve_prompt(self.description, self.class_def)
+        self.unit_test = None
     
     def _add_step(self):
         """ Must/Only call this function to modify step
@@ -56,8 +58,8 @@ class leetcodeGPT:
         return prompt
         
         
-    def solve(self):
-        """ Solve the question
+    def solve(self, use_unit_test = True):
+        """ Solve the question 
         """
         for _ in range(self.n_debug + 1):
             print("Solving question: " + self.question + " at step " + str(self.step))
@@ -68,14 +70,18 @@ class leetcodeGPT:
             code = parse_response_davinci(response.to_dict())
             self._add_memory("code", code)
             write_file(self.solution_file, code)
-            oj_response = submit_to_lc(self.question)
-            self._add_memory("oj_response", oj_response)
-            if "Success" in oj_response: 
+            if use_unit_test:
+                executable = generate_executable(code, self.unit_test)
+                execute_result = check_correctness(executable) 
+            else:
+                execute_result = submit_to_lc(self.question)
+            self._add_memory("execute_result", execute_result)
+            if "Success" in execute_result: 
                 write_json(MEM_PATH + self.question + ".json", self.memory)
                 print("question " + self.question + " solved at step " + str(self.step))
                 return
             else:
-                debug_prompt = generate_debug_prompt(code, oj_response)
+                debug_prompt = generate_debug_prompt(code, execute_result)
                 self._add_memory("debug_prompt", debug_prompt)
             self._add_step()
         write_json(MEM_PATH + self.question + ".json", self.memory)
