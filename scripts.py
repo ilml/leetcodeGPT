@@ -43,9 +43,12 @@ def find_file_by_number(directory, number):
 def generate_prompt(description, class_def):
     return PREFIX + description + PROMPT +  class_def + RESPONSE 
     
-def send_to_openai(prompt):
-    response = openai.Completion.create(
-      model= MODEL,
+def send_to_openai(prompt, model):
+    api_name = model_to_api.get(model)
+    api_module = getattr(openai, api_name, None)
+    api = getattr(api_module, "create", None)
+    response = api(
+      model= model,
       prompt= prompt,
       temperature=1,
       max_tokens=MAX_TOKENS,
@@ -86,6 +89,9 @@ def generate_solve_prompt(description, class_def):
 
 def generate_executable(code, unit_test):
     return code + "\n" + unit_test
+
+def generate_unit_test_prompt(description, class_def):
+    return UNIT_TEST + description + PROMPT_UT +  class_def + RESPONSE
 
 if __name__ == "__main__":
     start = int(sys.argv[1])

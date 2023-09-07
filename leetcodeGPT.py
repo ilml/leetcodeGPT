@@ -65,7 +65,7 @@ class leetcodeGPT:
             print("Solving question: " + self.question + " at step " + str(self.step))
             prompt = self.generate_prompt()
             self._add_memory("prompt", prompt)
-            response = send_to_openai(prompt)
+            response = send_to_openai(prompt, self.model)
             self._add_memory("model_response", response)
             code = parse_response_davinci(response.to_dict())
             self._add_memory("code", code)
