@@ -15,7 +15,8 @@ def main():
     args = parser.parse_args()
 
     for question in range(int(args.start), int(args.end) + 1):
-        UnitTestGenerator(str(question), args.model).generate_unit_test()
+        UnitTestGenerator(str(question), args.model).save_prompt()
+        print("question " + str(question) + " generated unit test done")
 
 if __name__ == "__main__":
     main()

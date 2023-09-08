@@ -14,6 +14,7 @@ PROMPT_PATH = "./data/prompt/"
 OJ_PATH = "./data/oj/"
 MEM_PATH = "./data/mem/"
 UNIT_TEST_PATH = "./data/unit_test/"
+UT_PROMPT_PATH = "./data/ut_prompt/"
 
 PREFIX = "### Instruction: You are a helpful AI Assistant. Please provide python solution based on the user's instructions,  \\\
          please only return python code. Please consider optimized time and space complexity.  ### Input: "

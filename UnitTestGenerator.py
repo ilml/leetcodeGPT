@@ -21,3 +21,7 @@ class UnitTestGenerator:
         response = send_to_openai(self.prompt, self.model)
         code = parse_response_davinci(response.to_dict())
         write_json(UNIT_TEST_PATH + self.question + ".json", code)
+
+    def save_prompt(self):
+        write_file(UT_PROMPT_PATH + self.question + ".prompt", self.prompt)
+
